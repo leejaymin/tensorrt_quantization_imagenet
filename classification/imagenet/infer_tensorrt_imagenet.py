@@ -22,15 +22,26 @@ import numpy as np
 import tensorrt as trt
 import pycuda.driver as cuda
 import pycuda.autoinit  # To automatically manage CUDA context creation and cleanup
-
+import logging
+import time
 
 def load_normalized_test_case(test_images, pagelocked_buffer, preprocess_func):
     # Expected input dimensions
-    C, H, W = (3, 224, 224)
+    #C, H, W = (3, 224, 224)
     # Normalize the images, concatenate them and copy to pagelocked memory.
-    data = np.asarray([preprocess_func(PIL.Image.open(img), C, H, W) for img in test_images]).flatten()
+    pil_logger = logging.getLogger('PIL')
+    pil_logger.setLevel(logging.INFO)
+    data = np.asarray([preprocess_func(PIL.Image.open(img)) for img in test_images]).flatten()
     np.copyto(pagelocked_buffer, data)
 
+# def load_normalized_test_case_299(test_images, pagelocked_buffer, preprocess_func):
+#     # Expected input dimensions
+#     #C, H, W = (3, 299, 299)
+#     # Normalize the images, concatenate them and copy to pagelocked memory.
+#     pil_logger = logging.getLogger('PIL')
+#     pil_logger.setLevel(logging.INFO)
+#     data = np.asarray([preprocess_func(PIL.Image.open(img)) for img in test_images]).flatten()
+#     np.copyto(pagelocked_buffer, data)
 
 class HostDeviceMem(object):
     r""" Simple helper data class that's a little nicer to use than a 2-tuple.
@@ -47,7 +58,7 @@ class HostDeviceMem(object):
 
 
 def allocate_buffers(engine: trt.ICudaEngine, batch_size: int):
-    print('Allocating buffers ...')
+    #print('Allocating buffers ...')
 
     inputs = []
     outputs = []
@@ -82,6 +93,7 @@ def infer(engine, preprocess_func, batch_size=8, input_images=[], labels=[], num
     with engine.create_execution_context() as context:
         test_images = np.random.choice(input_images, size=batch_size)
         load_normalized_test_case(test_images, inputs[0].host, preprocess_func)
+        #load_normalized_test_case_299(test_images, inputs[0].host, preprocess_func)
 
         inp = inputs[0]
         # Transfer input data to the GPU.
@@ -97,15 +109,10 @@ def infer(engine, preprocess_func, batch_size=8, input_images=[], labels=[], num
 
         # Split 1-D output of length N*labels into 2-D array of (N, labels)
         batch_outs = np.array(np.split(out_np, batch_size))
-        for test_image, batch_out in zip(test_images, batch_outs):
-            topk_indices = np.argsort(batch_out)[-1*num_classes:][::-1]
-            preds = labels[topk_indices]
-            probs = batch_out[topk_indices]
 
-    return topk_indices
-                # print("Input image:", test_image)
-                # for index, pred, prob in zip(topk_indices, preds, probs):
-                #     print("\tPrediction: {:1}{:29} Probability: {:0.2f}".format(pred, index, prob))
+    return batch_outs
+    #return topk_indices
+
 
 
 
@@ -187,6 +194,12 @@ if __name__ == '__main__':
                         help="Number of inputs to send in parallel (up to max batch size of engine).")
     parser.add_argument("-p", "--preprocess_func", type=str, default=None,
                         help="Name of function defined in 'processing.py' to use for pre-processing calibration data.")
+    parser.add_argument("-RGB", "--rgb_mode", type=bool, default=False,
+                        help="RGB")
+    parser.add_argument("-lo", "--label_offset", type=int, default=0,
+                        help="label offset")
+    parser.add_argument("-v", "--verbose", type=bool, default=False,
+                        help="Print label and confidence")
     args = parser.parse_args()
 
     #input_images = get_inputs(args.file, args.directory)
@@ -201,7 +214,11 @@ if __name__ == '__main__':
         preprocess_func = processing.preprocess_imagenet
 
     #img_paths, img_labels = get_img_paths_and_labels("/root/hdd/imagenet/imagenet2012_processed")
-    img_paths, img_labels = get_img_paths_and_labels("/root/hdd/imagenet/small_imagenet") # for debug
+    #img_paths, img_labels = get_img_paths_and_labels("/root/hdd/imagenet/val_processed_299")
+
+    #img_paths, img_labels = get_img_paths_and_labels("/root/hdd/imagenet/small_imagenet_299") # for debug
+    #img_paths, img_labels = get_img_paths_and_labels("/root/hdd/imagenet/small_imagenet") # for debug
+    img_paths, img_labels = get_img_paths_and_labels(args.directory) # for debug
 
     total_image_count = len(img_paths)
     top1_count = 0
@@ -210,6 +227,7 @@ if __name__ == '__main__':
     with open(args.engine, 'rb') as f, trt.Runtime(trt.Logger(trt.Logger.WARNING)) as runtime:
         engine = runtime.deserialize_cuda_engine(f.read())
 
+    start = time.time()
     for img_index in range(0, total_image_count):
         curr_img_paths = img_paths[img_index]
         input_images = get_inputs(curr_img_paths, args.directory)
@@ -220,10 +238,23 @@ if __name__ == '__main__':
 
         # infer(args.engine, preprocess_func, batch_size=args.batch_size, input_images=input_images,
         #       labels=labels, num_classes=args.num_classes)
-        print(input_images)
-        index = infer(engine, preprocess_func, batch_size=args.batch_size, input_images=input_images,
+        #print(input_images)
+        batch_outs = infer(engine, preprocess_func, batch_size=args.batch_size, input_images=input_images,
               labels=labels, num_classes=args.num_classes)
 
+        for batch_out in batch_outs:
+            topk_indices = np.argsort(batch_out)[-1*args.num_classes:][::-1]
+            #topk_indices = topk_indices-1
+            #preds = labels[topk_indices]
+            probs = batch_out[topk_indices]
+
+            topk_indices = topk_indices - args.label_offset
+            if args.verbose:
+                print("Input image:", input_images)
+                for index, prob in zip(topk_indices, probs):
+                    print("\tPrediction: {:29} Probability: {:0.4f}".format(index, prob))
+
+        index = topk_indices
         j = 1
         for i in index[:-1]:
             #print('Top-%d: class=%s(%d) ; probability=%f' % (j, labels[i], i, prob[i]))
@@ -243,3 +274,8 @@ if __name__ == '__main__':
             print("  Current Top-1/5 accuracy:")
             print_topk_accuracy(curr_completed_count, top1_count,
                                 top5_count)
+            current = time.time()
+            hours, rem = divmod(current - start, 3600)
+            minutes, seconds = divmod(rem, 60)
+            print("elapsed time: {:0>2}:{:0>2}:{:05.5f}".format(int(hours), int(minutes), seconds))
+            print("avg. latency: {:05.5f}".format((current-start)/curr_completed_count))

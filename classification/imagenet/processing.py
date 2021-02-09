@@ -74,6 +74,32 @@ def preprocess_imagenet(image, channels=3, height=224, width=224):
 
     return img_data
 
+def preprocess_imagenet_googlenet(image, channels=3, height=299, width=299):
+    # Get the image in CHW format
+    resized_image = image.resize((width, height), Image.ANTIALIAS)
+    img_data = np.asarray(resized_image).astype(np.float32)
+
+    if len(img_data.shape) == 2:
+        # For images without a channel dimension, we stack
+        img_data = np.stack([img_data] * 3)
+        logger.debug("Received grayscale image. Reshaped to {:}".format(img_data.shape))
+    elif img_data.shape[2] == 4:
+        # For images without a alpha channel.
+        img_data = img_data[:,:,:3] # Drop alpha channel
+        logger.debug("Received image including alpha channel. Reshaped to {:}".format(img_data.shape))
+
+    mean_vec = np.array([0.485, 0.456, 0.406])
+    stddev_vec = np.array([0.229, 0.224, 0.225])
+    assert img_data.shape[2] == channels
+
+    for i in range(img_data.shape[2]):
+        # Scale each pixel to [0, 1] and normalize per channel.
+        img_data[:, :, i] = (img_data[:, :, i] / 255 - mean_vec[i]) / stddev_vec[i]
+
+    # for BGR
+    img_data[:, :, [0, 1, 2]] = img_data[:, :, [2, 1, 0]]
+    return img_data
+
 
 def preprocess_inception(image, channels=3, height=224, width=224):
     """Pre-processing for InceptionV1. Inception expects different pre-processing
