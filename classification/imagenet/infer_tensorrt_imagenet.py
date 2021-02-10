@@ -31,7 +31,8 @@ def load_normalized_test_case(test_images, pagelocked_buffer, preprocess_func):
     # Normalize the images, concatenate them and copy to pagelocked memory.
     pil_logger = logging.getLogger('PIL')
     pil_logger.setLevel(logging.INFO)
-    data = np.asarray([preprocess_func(PIL.Image.open(img)) for img in test_images]).flatten()
+    #data = np.asarray([preprocess_func(PIL.Image.open(img)) for img in test_images]).flatten()
+    data = np.asarray(preprocess_func(PIL.Image.open(test_images))).flatten()
     np.copyto(pagelocked_buffer, data)
 
 # def load_normalized_test_case_299(test_images, pagelocked_buffer, preprocess_func):
@@ -91,8 +92,8 @@ def infer(engine, preprocess_func, batch_size=8, input_images=[], labels=[], num
 
     # Contexts are used to perform inference.
     with engine.create_execution_context() as context:
-        test_images = np.random.choice(input_images, size=batch_size)
-        load_normalized_test_case(test_images, inputs[0].host, preprocess_func)
+        #test_images = np.random.choice(input_images, size=batch_size)
+        load_normalized_test_case(input_images, inputs[0].host, preprocess_func)
         #load_normalized_test_case_299(test_images, inputs[0].host, preprocess_func)
 
         inp = inputs[0]
@@ -230,7 +231,9 @@ if __name__ == '__main__':
     start = time.time()
     for img_index in range(0, total_image_count):
         curr_img_paths = img_paths[img_index]
-        input_images = get_inputs(curr_img_paths, args.directory)
+        #input_images = get_inputs(curr_img_paths, args.directory)
+        #input_images = []
+        #input_images.append(curr_img_paths)
         #print(curr_img_paths)
         expected_label = img_labels[img_index]
 
@@ -239,7 +242,7 @@ if __name__ == '__main__':
         # infer(args.engine, preprocess_func, batch_size=args.batch_size, input_images=input_images,
         #       labels=labels, num_classes=args.num_classes)
         #print(input_images)
-        batch_outs = infer(engine, preprocess_func, batch_size=args.batch_size, input_images=input_images,
+        batch_outs = infer(engine, preprocess_func, batch_size=args.batch_size, input_images=curr_img_paths,
               labels=labels, num_classes=args.num_classes)
 
         for batch_out in batch_outs:
@@ -250,7 +253,7 @@ if __name__ == '__main__':
 
             topk_indices = topk_indices - args.label_offset
             if args.verbose:
-                print("Input image:", input_images)
+                print("Input image:", curr_img_paths)
                 for index, prob in zip(topk_indices, probs):
                     print("\tPrediction: {:29} Probability: {:0.4f}".format(index, prob))
 
@@ -268,7 +271,7 @@ if __name__ == '__main__':
             top5_count += 1
 
         curr_completed_count = img_index+1
-        if curr_completed_count % 10 == 0:
+        if curr_completed_count % 1 == 0:
             print("Finished image index %d out of %d" % (
                 (curr_completed_count, total_image_count)))
             print("  Current Top-1/5 accuracy:")
@@ -278,4 +281,4 @@ if __name__ == '__main__':
             hours, rem = divmod(current - start, 3600)
             minutes, seconds = divmod(rem, 60)
             print("elapsed time: {:0>2}:{:0>2}:{:05.5f}".format(int(hours), int(minutes), seconds))
-            print("avg. latency: {:05.5f}".format((current-start)/curr_completed_count))
+            print("avg. latency: {:05.5f} {:3}{:3}".format((current-start)/curr_completed_count, (current-start), curr_completed_count))
