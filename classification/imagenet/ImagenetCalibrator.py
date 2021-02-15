@@ -112,7 +112,9 @@ class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
     def __init__(self, calibration_files=[], batch_size=32, input_shape=(3, 224, 224),
                  cache_file="calibration.cache", preprocess_func=None):
         super().__init__()
-        self.input_shape = input_shape
+        self.input_shape = input_shape # for NCHW
+        #self.input_shape = (299,299,3) # for googlenet, NHWC
+        #self.input_shape = (224, 224, 3)  # for resnet18 NHWC
         self.cache_file = cache_file
         self.batch_size = batch_size
         self.batch = np.zeros((self.batch_size, *self.input_shape), dtype=np.float32)
@@ -137,7 +139,7 @@ class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
         for index in range(0, len(self.files), self.batch_size):
             for offset in range(self.batch_size):
                 image = Image.open(self.files[index + offset])
-                self.batch[offset] = self.preprocess_func(image, *self.input_shape)
+                self.batch[offset] = self.preprocess_func(image)
             logger.info("Calibration images pre-processed: {:}/{:}".format(index+self.batch_size, len(self.files)))
             yield self.batch
 

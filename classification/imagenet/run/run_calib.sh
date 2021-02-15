@@ -16,7 +16,7 @@ declare -a ONNX_MODEL=(
 "/root/hdd/models/shufflenet/model.onnx"
 "/root/hdd/models/squeezenet/model.onnx"
 "/root/hdd/models/googlenet_v4_slim/googlenet_v4_slim.onnx"
-"/root/hdd/models/mxnet_exported_resnet18.onnx.onnx"
+"/root/hdd/models/mxnet_exported_resnet18.onnx"
 "/root/hdd/models/resnet50/model.onnx"
 )
 declare -a CACHE_FILENAME=(
@@ -32,7 +32,7 @@ declare -a pre_func=(
 "preprocess_imagenet"
 "preprocess_imagenet_squeezenet"
 "preprocess_imagenet_googlenet"
-"preprocess_imagenet"
+"preprocess_imagenet_resnet18"
 "preprocess_imagenet"
 )
 declare -a OUTPUT=(

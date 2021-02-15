@@ -5,7 +5,7 @@ trap "exit" INT
 declare -a OUTPUT=(
 "../engines/mobilenet.int8.engine"
 "../engines/shufflenet.int8.engine"
-"../engines/squeezenet.int8_2.engine"
+"../engines/squeezenet.int8.engine"
 "../engines/googlenet_v4_slim.int8.engine"
 "../engines/resnet18.int8.engine"
 "../engines/resnet50.int8.engine"
@@ -23,7 +23,7 @@ declare -a pre_func=(
 "preprocess_imagenet"
 "preprocess_imagenet_squeezenet"
 "preprocess_imagenet_googlenet"
-"preprocess_imagenet"
+"preprocess_imagenet_resnet18"
 "preprocess_imagenet"
 )
 declare -a dir_name=(

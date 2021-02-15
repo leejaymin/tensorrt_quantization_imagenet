@@ -24,7 +24,7 @@ declare -a pre_func=(
 "preprocess_imagenet"
 "preprocess_imagenet_squeezenet"
 "preprocess_imagenet_googlenet"
-"preprocess_imagenet"
+"preprocess_imagenet_resnet18"
 "preprocess_imagenet"
 )
 

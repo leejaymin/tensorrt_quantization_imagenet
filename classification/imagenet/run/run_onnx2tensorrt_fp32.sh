@@ -7,7 +7,7 @@ declare -a ONNX_MODEL=(
 "/root/hdd/models/shufflenet/model.onnx"
 "/root/hdd/models/squeezenet/model.onnx"
 "/root/hdd/models/googlenet_v4_slim/googlenet_v4_slim.onnx"
-"/root/hdd/models/mxnet_exported_resnet18.onnx.onnx"
+"/root/hdd/models/mxnet_exported_resnet18.onnx"
 "/root/hdd/models/resnet50/model.onnx"
 )
 
@@ -20,7 +20,7 @@ declare -a OUTPUT=(
 "../engines/resnet50.fp32.engine"
 )
 
-python onnx_to_tensorrt.py \
+python ../onnx_to_tensorrt.py \
     --onnx=${ONNX_MODEL[input]} \
     --explicit-batch \
     -o ${OUTPUT[input]}
