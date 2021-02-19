@@ -45,3 +45,4 @@ python3 ../infer_tensorrt_imagenet.py \
       --label_offset=${labeloffset[input]} \
       --labels="../labels/imagenet1k_labels.txt" \
       --engine ${OUTPUT[input]}
+

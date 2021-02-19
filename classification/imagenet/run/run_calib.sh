@@ -51,3 +51,4 @@ python3 ../onnx_to_tensorrt.py --fp16 --int8 -v \
         --preprocess_func=${pre_func[input]} \
         --explicit-batch \
         --onnx ${ONNX_MODEL[input]} -o ${OUTPUT[input]}
+

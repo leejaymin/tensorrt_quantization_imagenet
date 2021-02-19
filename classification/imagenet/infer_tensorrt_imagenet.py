@@ -99,9 +99,11 @@ def infer(engine, preprocess_func, batch_size=8, input_images=[], labels=[], num
         inp = inputs[0]
         # Transfer input data to the GPU.
         cuda.memcpy_htod(inp.device, inp.host)
-
+        net_start = time.time()
         # Run inference.
         context.execute(batch_size, dbindings)
+        net_current = time.time()
+        print("Latency: {:05.5f}".format(net_current - net_start))
 
         out = outputs[0]
         # Transfer predictions back to host from GPU
@@ -281,4 +283,4 @@ if __name__ == '__main__':
             hours, rem = divmod(current - start, 3600)
             minutes, seconds = divmod(rem, 60)
             print("elapsed time: {:0>2}:{:0>2}:{:05.5f}".format(int(hours), int(minutes), seconds))
-            print("avg. latency: {:05.5f} {:3}{:3}".format((current-start)/curr_completed_count, (current-start), curr_completed_count))
+            #print("avg. latency: {:05.5f} {:3}{:3}".format((current-start)/curr_completed_count, (current-start), curr_completed_count))
